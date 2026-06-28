@@ -3,28 +3,33 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "按时吃药"
+				"navigationBarTitleText": "我的"
 			}
 		},
 		{
-			"path": "pages/plans/index",
+			"path": "pages/medicines/index",
 			"style": {
-				"navigationBarTitleText": "用药计划",
-				"enablePullDownRefresh": true
+				"navigationBarTitleText": "我的药品"
 			}
 		},
 		{
-			"path": "pages/plans/form",
+			"path": "pages/medicines/create",
 			"style": {
-				"navigationBarTitleText": "新增用药计划"
+				"navigationBarTitleText": "新增药品"
+			}
+		},
+		{
+			"path": "pages/medicines/detail",
+			"style": {
+				"navigationBarTitleText": "药品详情"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "按时吃药",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F5F7FA"
 	},
 	"uniIdRouter": {}
 }

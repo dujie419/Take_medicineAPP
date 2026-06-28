@@ -13,5 +13,13 @@
 </script>
 
 <style>
-	/*每个页面公共css */
+	page {
+		background: #f5f7fa;
+		color: #1f2937;
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	}
+
+	button {
+		border-radius: 8rpx;
+	}
 </style>
