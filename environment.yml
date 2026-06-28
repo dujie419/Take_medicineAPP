@@ -1,0 +1,26 @@
+name: take-medicine-api
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+
+  - pip:
+      - fastapi
+      - uvicorn[standard]
+      - sqlalchemy
+      - alembic
+      - pymysql
+      - pydantic
+      - pydantic-settings
+      - python-jose[cryptography]
+      - passlib[bcrypt]
+      - python-multipart
+      - httpx
+      - pytest
+      - pytest-asyncio
+      - python-dotenv
+      - pillow

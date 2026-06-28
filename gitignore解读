@@ -1,0 +1,220 @@
+1. env 环境变量文件
+# env
+.env
+
+表示忽略 .env 文件。
+
+.env 里面通常会放：
+
+DATABASE_URL=数据库连接地址
+JWT_SECRET_KEY=JWT密钥
+BAILIAN_API_KEY=阿里云百炼Key
+ALIYUN_SMS_ACCESS_KEY_SECRET=短信密钥
+
+这些都是敏感信息，不能提交到 GitHub。
+
+正确做法是：
+
+.env.example  可以提交，作为模板
+.env          不能提交，自己本地使用
+2. Python 缓存文件
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+这些是 Python 自动生成的缓存文件。
+
+__pycache__/
+
+Python 运行代码后会自动生成这个文件夹，用来加快下次运行速度。
+
+例如：
+
+backend/app/__pycache__/
+
+不需要提交。
+
+*.pyc
+
+.pyc 是 Python 编译后的缓存文件。
+
+例如：
+
+main.cpython-311.pyc
+
+也不需要提交。
+
+.pytest_cache/
+
+这是你运行 pytest 测试后自动生成的缓存目录。
+
+它只对本地测试有用，不需要提交。
+
+3. 上传文件目录
+# Uploads
+uploads/
+
+这个目录通常用来保存用户上传的图片。
+
+比如你的项目中会上传：
+
+药盒图片
+药瓶图片
+处方图片
+用药清单图片
+
+这些属于用户数据，不应该提交到 Git。
+
+原因：
+
+可能包含隐私
+文件体积可能很大
+每个人本地上传内容不同
+不属于源代码
+4. Node / 前端依赖和打包文件
+# Node
+node_modules/
+dist/
+unpackage/
+
+这些和前端有关。
+
+node_modules/
+
+这是前端安装依赖后生成的目录。
+
+例如执行：
+
+npm install
+
+会生成：
+
+node_modules/
+
+这个目录非常大，不能提交。
+
+正确做法是提交：
+
+package.json
+package-lock.json
+
+别人拿到项目后执行：
+
+npm install
+
+就能重新生成 node_modules/。
+
+dist/
+
+这是前端打包后的产物目录。
+
+一般不提交源码仓库，除非项目特殊要求。
+
+unpackage/
+
+这是 uni-app / HBuilderX 编译运行时常见的输出目录。
+
+里面可能有：
+
+运行到浏览器的临时文件
+打包 Android 的临时文件
+APK 构建产物
+
+这些属于构建结果，不是源代码，一般不提交。
+
+5. 数据库本地数据目录
+# Database
+mysql_data/
+
+如果 Docker Compose 使用了本地目录保存 MySQL 数据，比如：
+
+mysql_data/
+
+这个目录会保存数据库真实数据。
+
+不能提交，原因：
+
+里面可能有用户数据
+文件很大
+不同电脑数据库数据不同
+容易造成 Git 仓库混乱
+
+数据库结构应该通过：
+
+Alembic 迁移文件
+SQL 初始化脚本
+
+来管理，而不是提交数据库数据文件。
+
+6. IDE 配置文件
+# IDE
+.idea/
+.vscode/
+
+这些是编辑器或 IDE 自动生成的配置。
+
+.idea/
+
+这是 PyCharm / IntelliJ 生成的项目配置目录。
+
+里面可能有：
+
+本地解释器路径
+运行配置
+项目索引
+个人设置
+
+这些每个人电脑都不一样，不建议提交。
+
+.vscode/
+
+这是 VS Code 生成的配置目录。
+
+里面可能有：
+
+本地调试配置
+插件配置
+工作区设置
+
+如果团队需要统一 VS Code 配置，可以有选择地提交部分文件。
+但初学阶段建议先忽略，避免冲突。
+
+7. 系统文件
+# OS
+.DS_Store
+Thumbs.db
+
+这些是操作系统自动生成的文件。
+
+.DS_Store
+
+macOS 系统自动生成的文件，用来保存文件夹显示设置。
+
+不需要提交。
+
+Thumbs.db
+
+Windows 系统生成的缩略图缓存文件。
+
+不需要提交。
+
+总结一下
+
+这份 .gitignore 的作用可以总结为：
+
+忽略内容	为什么忽略
+.env	防止泄露数据库密码、JWT 密钥、短信 Key、AI Key
+__pycache__/、*.pyc	Python 自动缓存，不是源码
+.pytest_cache/	测试缓存，不需要提交
+uploads/	用户上传图片，可能有隐私
+node_modules/	前端依赖太大，可重新安装
+dist/	打包产物，不是源码
+unpackage/	uni-app 编译产物，不是源码
+mysql_data/	本地数据库数据，不能提交
+.idea/、.vscode/	本地编辑器配置，容易冲突
+.DS_Store、Thumbs.db	系统自动生成文件
+
+一句话：
+
+.gitignore 是为了让 Git 只管理真正重要的项目源码、配置模板和文档，不管理本地缓存、依赖、密钥、上传文件和临时构建产物。
