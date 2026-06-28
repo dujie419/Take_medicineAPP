@@ -1,10 +1,10 @@
-# A 同学认证与用户资料模块交接说明
+# A 同学认证、用户资料与药品管理模块交接说明
 
 更新时间：2026-06-28
 
 ## 1. 本次完成范围
 
-本次完成了 A 同学负责业务线中的第一阶段后端能力：
+本次完成了 A 同学负责业务线中的 A-2 登录认证、A-3 用户资料、A-4 药品管理基础闭环：
 
 - FastAPI 后端基础入口
 - 统一 API 返回格式
@@ -13,11 +13,14 @@
 - 手机号验证码登录
 - 首次登录自动注册
 - JWT 生成与鉴权
-- 当前用户信息查询
-- 用户称呼修改
+- 当前用户信息查询和称呼修改
 - users 用户表迁移
+- 药品新增、列表、详情接口
+- medicines 药品表迁移
+- 前端“我的”页面
+- 前端“我的药品 / 新增药品 / 药品详情”页面
 
-验证码不再存 MySQL，按最新方案使用 Redis 保存短期状态；MySQL 当前只保存用户数据。
+验证码不再存 MySQL，按最新方案使用 Redis 保存短期状态；MySQL 保存用户和药品数据。
 
 ## 2. 已完成接口
 
@@ -105,18 +108,67 @@ PATCH /api/v1/auth/me
 
 称呼会自动去除首尾空格，不能为空。
 
+### 获取当前用户药品列表
+
+```text
+GET /api/v1/medicines
+```
+
+需要请求头：
+
+```text
+Authorization: Bearer <access_token>
+```
+
+只返回当前登录用户自己的药品，按创建时间倒序。
+
+### 新增药品
+
+```text
+POST /api/v1/medicines
+```
+
+请求：
+
+```json
+{
+  "name": "阿司匹林",
+  "specification": "100mg * 30片",
+  "dosage": "每次 1 片",
+  "usage_note": "饭后服用",
+  "original_image_path": null,
+  "ai_confidence": null
+}
+```
+
+说明：
+
+- `name` 必填，不能为空。
+- `user_id` 不由前端传，后端使用当前登录用户 ID。
+- `ai_confidence` 如果填写，范围是 0 到 1。
+
+### 获取药品详情
+
+```text
+GET /api/v1/medicines/{id}
+```
+
+只能查询当前登录用户自己的药品；药品不存在或不属于当前用户时返回 404。
+
 ## 3. 数据库变更
 
 新增 Alembic 迁移文件：
 
 ```text
 backend/alembic/versions/20260628_0001_create_users.py
+backend/alembic/versions/20260628_0002_create_medicines.py
 ```
 
 当前迁移会创建：
 
 ```text
 users
+medicines
 alembic_version
 ```
 
@@ -133,6 +185,23 @@ updated_at
 ```
 
 手机号 `phone` 有唯一索引。
+
+`medicines` 表字段：
+
+```text
+id
+user_id
+name
+specification
+dosage
+usage_note
+original_image_path
+ai_confidence
+created_at
+updated_at
+```
+
+`medicines.user_id` 外键关联 `users.id`，并建立索引。
 
 执行迁移命令：
 
@@ -256,6 +325,7 @@ backend/app/api/v1/auth.py
 
 ```text
 backend/app/models/user.py
+backend/app/models/medicine.py
 ```
 
 认证服务：
@@ -263,6 +333,7 @@ backend/app/models/user.py
 ```text
 backend/app/services/auth_service.py
 backend/app/services/sms_service.py
+backend/app/services/medicine_service.py
 ```
 
 Schema：
@@ -270,7 +341,14 @@ Schema：
 ```text
 backend/app/schemas/auth.py
 backend/app/schemas/user.py
+backend/app/schemas/medicine.py
 backend/app/schemas/common.py
+```
+
+药品路由：
+
+```text
+backend/app/api/v1/medicines.py
 ```
 
 ## 7. 启动方式
@@ -309,20 +387,25 @@ D:/all_codes/Take_medicineAPP/main.py
 
 ## 8. 测试记录
 
-已完成验证：
+已完成验证或可按 Swagger 手动验证：
 
 - `/health` 返回 200。
-- `/docs` 能看到认证接口。
+- `/docs` 能看到认证接口和药品接口。
 - Redis 启动后，`POST /api/v1/auth/sms-codes` 可成功返回。
 - 使用手机号 `13800000000` 和验证码 `123456` 可登录。
 - 登录成功后返回 JWT。
 - Swagger Authorize 携带 token 后，`GET /api/v1/auth/me` 成功。
 - `PATCH /api/v1/auth/me` 可修改称呼。
-- Alembic 迁移后数据库中存在 `users` 和 `alembic_version` 表。
+- Alembic 迁移后数据库中存在 `users`、`medicines` 和 `alembic_version` 表。
+- 携带 token 后，`POST /api/v1/medicines` 可新增当前用户药品。
+- 携带 token 后，`GET /api/v1/medicines` 只返回当前用户药品。
+- 携带 token 后，`GET /api/v1/medicines/{id}` 只能查看当前用户自己的药品。
+- 前端登录成功后会自动进入“我的药品”页面。
+- 前端“我的药品”页面支持新增药品和查看详情。
 
 ## 9. 下一模块接手建议
 
-下一位同学如果继续开发 B 同学模块，可以直接复用：
+B 同学继续开发用药计划、今日提醒、服药记录等模块时，可以直接复用：
 
 ```python
 from app.api.deps import get_current_user
@@ -338,9 +421,9 @@ def example(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user.id
 ```
 
-后续药品、计划、今日提醒、服药记录等接口都应通过 `current_user.id` 过滤数据。
+后续计划、今日提醒、服药记录等接口都应通过 `current_user.id` 过滤数据。
 
-建议下一步优先实现 A 同学后续药品管理接口：
+药品管理接口已实现：
 
 ```text
 GET /api/v1/medicines
@@ -348,9 +431,40 @@ POST /api/v1/medicines
 GET /api/v1/medicines/{id}
 ```
 
-药品接口完成后，B 同学的用药计划模块就可以基于药品数据继续开发。
+药品接口已经完成，B 同学的用药计划模块可以基于药品数据继续开发。
 
-## 10. 当前注意事项
+B 同学创建用药计划时可以使用 `medicine_id` 引用药品，但后端必须校验该药品属于当前登录用户：
+
+```python
+medicine = MedicineService(db).get_for_user(medicine_id, current_user.id)
+```
+
+B 的计划接口不要接收或信任前端传入的 `user_id`，统一使用 `current_user.id`。
+
+## 10. 多人协作时的数据库同步规则
+
+当前已有 `users` 和 `medicines` 表迁移。B 同学开发 B-1 用药计划模块时，如果新增 `medication_plans`、`reminder_times` 等表，必须新增 Alembic 迁移文件，不要直接修改已经提交过的 A 同学迁移。
+
+B 同学提交迁移后，其他同学同步方式：
+
+```powershell
+cd D:\all_codes\Take_medicineAPP
+git pull
+cd backend
+alembic upgrade head
+```
+
+`alembic upgrade head` 只会执行本地数据库尚未执行过的新迁移，不会重复创建已有的 `users` 或 `medicines` 表。
+
+协作约定：
+
+- 每次数据库结构变化都新增一个迁移文件。
+- 拉取别人代码后先执行 `alembic upgrade head`。
+- 不手动删除表来同步结构。
+- 不修改已经被其他同学执行过的迁移文件。
+- 如果 Alembic 出现多个 head，再一起合并迁移头。
+
+## 11. 当前注意事项
 
 - 验证码依赖 Redis，Redis 未启动时验证码接口会返回 503。
 - 登录依赖 MySQL，必须先执行 `alembic upgrade head`。
