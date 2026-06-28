@@ -1,1 +1,1 @@
-"""Take Medicine API application package."""
+"""Application services."""
