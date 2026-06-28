@@ -69,6 +69,7 @@ def get_medication_plan(
     return _success(plan.model_dump(mode="json"))
 
 
+@router.put("/{plan_id}")
 @router.patch("/{plan_id}")
 def update_medication_plan(
     plan_id: int,

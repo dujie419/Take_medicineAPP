@@ -15,12 +15,7 @@ if TYPE_CHECKING:
 
 
 class MedicationPlan(Base):
-    """A user's daily medication schedule.
-
-    The table is intentionally not accompanied by an Alembic revision yet.
-    That revision must be generated only after A's shared database baseline
-    has been merged.
-    """
+    """A user's daily medication schedule."""
 
     __tablename__ = "medication_plans"
     __table_args__ = (

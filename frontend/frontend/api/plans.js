@@ -1,21 +1,21 @@
 import { request } from '@/utils/request.js'
 
 export function getPlans() {
-  return request({ url: '/plans' })
+  return request({ url: '/api/v1/plans' })
 }
 
 export function getPlan(planId) {
-  return request({ url: `/plans/${planId}` })
+  return request({ url: `/api/v1/plans/${planId}` })
 }
 
 export function createPlan(data) {
-  return request({ url: '/plans', method: 'POST', data })
+  return request({ url: '/api/v1/plans', method: 'POST', data })
 }
 
 export function updatePlan(planId, data) {
-  return request({ url: `/plans/${planId}`, method: 'PATCH', data })
+  return request({ url: `/api/v1/plans/${planId}`, method: 'PATCH', data })
 }
 
 export function deletePlan(planId) {
-  return request({ url: `/plans/${planId}`, method: 'DELETE' })
+  return request({ url: `/api/v1/plans/${planId}`, method: 'DELETE' })
 }

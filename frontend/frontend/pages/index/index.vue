@@ -71,6 +71,7 @@
 				<text class="value">{{ baseUrl }}</text>
 			</view>
 			<button v-if="isLoggedIn" class="primary-button" @click="goMedicines">我的药品</button>
+			<button v-if="isLoggedIn" class="primary-button" @click="goPlans">用药计划</button>
 			<button v-if="isLoggedIn" class="ghost-button" @click="logout">退出登录</button>
 		</view>
 	</view>
@@ -193,6 +194,9 @@
 			},
 			goMedicines() {
 				uni.navigateTo({ url: '/pages/medicines/index' })
+			},
+			goPlans() {
+				uni.navigateTo({ url: '/pages/plans/index' })
 			},
 		},
 	}

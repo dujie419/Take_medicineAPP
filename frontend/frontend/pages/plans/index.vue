@@ -22,6 +22,7 @@
       <text class="state-title">还没有用药计划</text>
       <text class="state-text">请先添加药品，再为药品设置提醒时间。</text>
       <button class="primary-button" size="mini" @click="openCreate">创建第一个计划</button>
+      <button class="medicine-button" size="mini" @click="openMedicineCreate">先添加药品</button>
     </view>
 
     <view v-else class="plan-list">
@@ -115,6 +116,9 @@ export default {
     },
     openCreate() {
       uni.navigateTo({ url: '/pages/plans/form' })
+    },
+    openMedicineCreate() {
+      uni.navigateTo({ url: '/pages/medicines/create' })
     },
     openEdit(planId) {
       uni.navigateTo({ url: `/pages/plans/form?id=${planId}` })
@@ -213,6 +217,13 @@ export default {
   color: #fff;
   border: 0;
   background: #2f80ed;
+}
+
+.medicine-button {
+  margin-top: 18rpx;
+  color: #2f80ed;
+  border: 1rpx solid #b9d6fa;
+  background: #fff;
 }
 
 .state-card,

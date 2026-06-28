@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+import { authStore } from '@/common/api.js'
 
 function errorMessage(data, fallback) {
   if (typeof data?.message === 'string' && data.message) return data.message
@@ -6,32 +6,37 @@ function errorMessage(data, fallback) {
   return fallback
 }
 
+function returnToLogin(message = '登录已失效，请重新登录') {
+  authStore.clearAuth()
+  uni.showToast({ title: message, icon: 'none' })
+  setTimeout(() => {
+    uni.reLaunch({ url: '/pages/index/index' })
+  }, 500)
+}
+
 export function request(options) {
-  if (!API_BASE_URL) {
-    return Promise.reject(new Error('未配置 VITE_API_BASE_URL，请先设置后端服务地址'))
+  const token = authStore.getToken()
+  if (!token) {
+    returnToLogin('请先登录')
+    return Promise.reject(new Error('请先登录'))
   }
 
-  const token = uni.getStorageSync('token')
   const headers = {
     'Content-Type': 'application/json',
     ...(options.header || {})
   }
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
+  headers.Authorization = `Bearer ${token}`
 
   return new Promise((resolve, reject) => {
     uni.request({
-      url: `${API_BASE_URL}${options.url}`,
+      url: `${authStore.getBaseUrl().replace(/\/$/, '')}${options.url}`,
       method: options.method || 'GET',
       data: options.data,
       header: headers,
       timeout: options.timeout || 15000,
       success: (response) => {
         if (response.statusCode === 401) {
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('user')
+          returnToLogin()
           reject(new Error('登录已失效，请重新登录'))
           return
         }

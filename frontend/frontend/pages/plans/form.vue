@@ -8,6 +8,13 @@
         <button class="retry-button" size="mini" @click="initialize">重新加载</button>
       </view>
 
+      <view v-if="!loadError && medicines.length === 0" class="empty-card">
+        <text class="empty-title">还没有可选择的药品</text>
+        <text class="empty-text">请先添加药品，再回来设置用药计划。</text>
+        <button class="create-medicine-button" @click="goCreateMedicine">去添加药品</button>
+      </view>
+
+      <template v-if="medicines.length > 0">
       <view class="form-card">
         <text class="section-title">药品与剂量</text>
 
@@ -85,6 +92,10 @@
         </view>
       </view>
 
+      <view class="safety-notice">
+        本 App 仅用于用药信息管理和提醒，请以医生处方、药品包装和说明书为准。
+      </view>
+
       <button
         class="submit-button"
         :loading="submitting"
@@ -93,6 +104,7 @@
       >
         {{ isEditing ? '保存修改' : '创建计划' }}
       </button>
+      </template>
     </view>
   </view>
 </template>
@@ -117,6 +129,7 @@ export default {
       loading: true,
       submitting: false,
       loadError: '',
+      initialized: false,
       form: {
         medicine_id: null,
         dose: '',
@@ -140,6 +153,11 @@ export default {
     this.planId = options.id ? Number(options.id) : null
     uni.setNavigationBarTitle({ title: this.planId ? '编辑用药计划' : '新增用药计划' })
     this.initialize()
+  },
+  onShow() {
+    if (this.initialized) {
+      this.initialize()
+    }
   },
   methods: {
     async initialize() {
@@ -167,6 +185,7 @@ export default {
         this.loadError = error.message || '初始化失败'
       } finally {
         this.loading = false
+        this.initialized = true
       }
     },
     medicineLabel(medicine) {
@@ -190,6 +209,9 @@ export default {
           }
         }
       })
+    },
+    goCreateMedicine() {
+      uni.navigateTo({ url: '/pages/medicines/create' })
     },
     setStartDate(event) {
       this.form.start_date = event.detail.value
@@ -280,11 +302,39 @@ export default {
 
 .state-card,
 .error-banner,
-.form-card {
+.form-card,
+.empty-card {
   margin-bottom: 24rpx;
   padding: 30rpx;
   border-radius: 22rpx;
   background: #fff;
+}
+
+.empty-card {
+  text-align: center;
+}
+
+.empty-title,
+.empty-text {
+  display: block;
+}
+
+.empty-title {
+  color: #26354a;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.empty-text {
+  margin: 16rpx 0 24rpx;
+  color: #7b8798;
+  font-size: 26rpx;
+}
+
+.create-medicine-button {
+  color: #fff;
+  border: 0;
+  background: #2f80ed;
 }
 
 .error-banner {
@@ -385,5 +435,16 @@ export default {
   border: 0;
   border-radius: 18rpx;
   background: #2f80ed;
+}
+
+.safety-notice {
+  margin: 6rpx 8rpx 24rpx;
+  padding: 20rpx 24rpx;
+  color: #8a6418;
+  border: 1rpx solid #f0d79b;
+  border-radius: 14rpx;
+  background: #fffaf0;
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 </style>
