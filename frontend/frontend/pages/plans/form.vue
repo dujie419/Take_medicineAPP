@@ -3,7 +3,10 @@
     <view v-if="loading" class="state-card">正在加载...</view>
 
     <view v-else>
-      <view v-if="loadError" class="error-banner">{{ loadError }}</view>
+      <view v-if="loadError" class="error-banner">
+        <text>{{ loadError }}</text>
+        <button class="retry-button" size="mini" @click="initialize">重新加载</button>
+      </view>
 
       <view class="form-card">
         <text class="section-title">药品与剂量</text>
@@ -82,7 +85,12 @@
         </view>
       </view>
 
-      <button class="submit-button" :loading="submitting" @click="submit">
+      <button
+        class="submit-button"
+        :loading="submitting"
+        :disabled="submitting || Boolean(loadError)"
+        @click="submit"
+      >
         {{ isEditing ? '保存修改' : '创建计划' }}
       </button>
     </view>
@@ -197,7 +205,9 @@ export default {
         uni.showToast({ title: '每天最多设置 24 个提醒', icon: 'none' })
         return
       }
-      this.form.reminder_times.push('12:00')
+      const candidates = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`)
+      const nextTime = candidates.find((item) => !this.form.reminder_times.includes(item))
+      this.form.reminder_times.push(nextTime || '12:00')
     },
     setReminderTime(index, event) {
       this.form.reminder_times.splice(index, 1, event.detail.value)
@@ -222,6 +232,7 @@ export default {
       return ''
     },
     async submit() {
+      if (this.submitting || this.loadError) return
       const validationMessage = this.validate()
       if (validationMessage) {
         uni.showToast({ title: validationMessage, icon: 'none' })
@@ -277,9 +288,18 @@ export default {
 }
 
 .error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   color: #b83b3b;
   border: 1rpx solid #f0bcbc;
   background: #fff5f5;
+}
+
+.retry-button {
+  flex-shrink: 0;
+  margin-left: 20rpx;
+  color: #2f80ed;
 }
 
 .section-row,

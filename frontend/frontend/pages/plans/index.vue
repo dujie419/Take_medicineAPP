@@ -35,6 +35,7 @@
           </view>
           <switch
             :checked="plan.is_enabled"
+            :disabled="isPlanBusy(plan.id)"
             color="#2f80ed"
             @change="togglePlan(plan, $event)"
           />
@@ -57,8 +58,21 @@
         </view>
 
         <view class="actions">
-          <button class="text-button" size="mini" @click="openEdit(plan.id)">编辑</button>
-          <button class="text-button danger" size="mini" @click="confirmDelete(plan)">
+          <button
+            class="text-button"
+            size="mini"
+            :disabled="isPlanBusy(plan.id)"
+            @click="openEdit(plan.id)"
+          >
+            编辑
+          </button>
+          <button
+            class="text-button danger"
+            size="mini"
+            :loading="deletingPlanIds.includes(plan.id)"
+            :disabled="isPlanBusy(plan.id)"
+            @click="confirmDelete(plan)"
+          >
             删除
           </button>
         </view>
@@ -75,7 +89,9 @@ export default {
     return {
       plans: [],
       loading: false,
-      errorMessage: ''
+      errorMessage: '',
+      updatingPlanIds: [],
+      deletingPlanIds: []
     }
   },
   onShow() {
@@ -103,31 +119,42 @@ export default {
     openEdit(planId) {
       uni.navigateTo({ url: `/pages/plans/form?id=${planId}` })
     },
+    isPlanBusy(planId) {
+      return this.updatingPlanIds.includes(planId) || this.deletingPlanIds.includes(planId)
+    },
     async togglePlan(plan, event) {
+      if (this.isPlanBusy(plan.id)) return
       const previousValue = plan.is_enabled
       const nextValue = event.detail.value
       plan.is_enabled = nextValue
+      this.updatingPlanIds.push(plan.id)
       try {
         await updatePlan(plan.id, { is_enabled: nextValue })
         uni.showToast({ title: nextValue ? '计划已启用' : '计划已暂停', icon: 'none' })
       } catch (error) {
         plan.is_enabled = previousValue
         uni.showToast({ title: error.message || '操作失败', icon: 'none' })
+      } finally {
+        this.updatingPlanIds = this.updatingPlanIds.filter((id) => id !== plan.id)
       }
     },
     confirmDelete(plan) {
+      if (this.isPlanBusy(plan.id)) return
       uni.showModal({
         title: '删除用药计划',
         content: `确认删除“${plan.medicine?.name || '该药品'}”的计划吗？`,
         confirmColor: '#d64545',
         success: async (result) => {
           if (!result.confirm) return
+          this.deletingPlanIds.push(plan.id)
           try {
             await deletePlan(plan.id)
             uni.showToast({ title: '已删除', icon: 'success' })
             await this.loadPlans()
           } catch (error) {
             uni.showToast({ title: error.message || '删除失败', icon: 'none' })
+          } finally {
+            this.deletingPlanIds = this.deletingPlanIds.filter((id) => id !== plan.id)
           }
         }
       })

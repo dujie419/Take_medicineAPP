@@ -41,6 +41,8 @@ class PlanCreate(BaseModel):
     is_enabled: bool = True
     reminder_times: list[time] = Field(min_length=1, max_length=24)
 
+    model_config = ConfigDict(extra="forbid")
+
     @field_validator("dose")
     @classmethod
     def normalize_dose(cls, value: str) -> str:
@@ -84,6 +86,11 @@ class PlanUpdate(BaseModel):
     remark: str | None = Field(default=None, max_length=500)
     is_enabled: bool | None = None
     reminder_times: list[time] | None = Field(default=None, min_length=1, max_length=24)
+
+    # medicine_id is deliberately absent: changing medicine requires a new plan.
+    # Forbidding extra fields makes an accidental medicine_id update fail loudly
+    # instead of being silently ignored by Pydantic.
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("dose")
     @classmethod
@@ -160,6 +167,8 @@ class PlanDetail(BaseModel):
     reminder_times: list[str]
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlanList(BaseModel):

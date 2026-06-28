@@ -26,6 +26,17 @@ def test_create_plan_normalizes_and_sorts_values():
     assert plan.reminder_times == [time(8, 0), time(20, 0)]
 
 
+def test_create_plan_trims_dose_and_empty_remark():
+    payload = valid_plan_data()
+    payload["dose"] = "  1片  "
+    payload["remark"] = "   "
+
+    plan = PlanCreate.model_validate(payload)
+
+    assert plan.dose == "1片"
+    assert plan.remark is None
+
+
 def test_daily_times_must_match_reminder_count():
     payload = valid_plan_data()
     payload["daily_times"] = 3
@@ -59,6 +70,32 @@ def test_end_date_cannot_precede_start_date():
         PlanCreate.model_validate(payload)
 
 
+def test_same_start_and_end_date_is_allowed():
+    payload = valid_plan_data()
+    payload["end_date"] = payload["start_date"]
+
+    plan = PlanCreate.model_validate(payload)
+
+    assert plan.end_date == plan.start_date
+
+
+@pytest.mark.parametrize("daily_times", [0, 25])
+def test_daily_times_must_be_between_one_and_twenty_four(daily_times):
+    payload = valid_plan_data()
+    payload["daily_times"] = daily_times
+
+    with pytest.raises(ValidationError):
+        PlanCreate.model_validate(payload)
+
+
+def test_create_rejects_unknown_fields():
+    payload = valid_plan_data()
+    payload["unexpected"] = "value"
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        PlanCreate.model_validate(payload)
+
+
 def test_update_requires_at_least_one_field():
     with pytest.raises(ValidationError, match="至少需要提供一个"):
         PlanUpdate.model_validate({})
@@ -69,6 +106,27 @@ def test_update_can_change_enabled_only():
 
     assert update.model_fields_set == {"is_enabled"}
     assert update.is_enabled is False
+
+
+def test_update_allows_clearing_end_date_and_remark():
+    update = PlanUpdate.model_validate({"end_date": None, "remark": None})
+
+    assert update.model_fields_set == {"end_date", "remark"}
+
+
+def test_update_rejects_attempt_to_change_medicine():
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        PlanUpdate.model_validate({"medicine_id": 2})
+
+
+def test_update_rejects_mismatched_complete_schedule():
+    with pytest.raises(ValidationError, match="每日次数必须与提醒时间数量一致"):
+        PlanUpdate.model_validate(
+            {
+                "daily_times": 2,
+                "reminder_times": ["08:00"],
+            }
+        )
 
 
 @pytest.mark.parametrize(
