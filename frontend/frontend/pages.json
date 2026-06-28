@@ -3,13 +3,26 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "按时吃药"
+			}
+		},
+		{
+			"path": "pages/plans/index",
+			"style": {
+				"navigationBarTitleText": "用药计划",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/plans/form",
+			"style": {
+				"navigationBarTitleText": "新增用药计划"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
+		"navigationBarTitleText": "按时吃药",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
 	},
