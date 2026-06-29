@@ -3,6 +3,9 @@ const USER_KEY = 'take_medicine_user'
 const BASE_URL_KEY = 'take_medicine_base_url'
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:8000'
+const SMS_MODE = typeof process !== 'undefined' && process.env && process.env.VUE_APP_SMS_MODE
+  ? process.env.VUE_APP_SMS_MODE
+  : 'mock'
 
 function getBaseUrl() {
   return uni.getStorageSync(BASE_URL_KEY) || DEFAULT_BASE_URL
@@ -51,6 +54,45 @@ function request({ url, method = 'GET', data, auth = false }) {
         }
 
         reject(new Error(body.message || '请求失败'))
+      },
+      fail: () => {
+        reject(new Error('无法连接后端服务'))
+      },
+    })
+  })
+}
+
+function upload({ url, filePath, name = 'file', auth = false }) {
+  const headers = {}
+  const token = getToken()
+
+  if (auth && token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  return new Promise((resolve, reject) => {
+    uni.uploadFile({
+      url: `${getBaseUrl()}${url}`,
+      filePath,
+      name,
+      header: headers,
+      success: (response) => {
+        let body = response.data || {}
+        if (typeof body === 'string') {
+          try {
+            body = JSON.parse(body)
+          } catch (error) {
+            reject(new Error('服务返回格式不正确'))
+            return
+          }
+        }
+
+        if (response.statusCode >= 200 && response.statusCode < 300 && body.code === 0) {
+          resolve(body.data)
+          return
+        }
+
+        reject(new Error(body.message || '上传失败'))
       },
       fail: () => {
         reject(new Error('无法连接后端服务'))
@@ -121,6 +163,23 @@ export function createMedicine(payload) {
   })
 }
 
+export function batchCreateMedicines(medicines) {
+  return request({
+    url: '/api/v1/medicines/batch',
+    method: 'POST',
+    data: { medicines },
+    auth: true,
+  })
+}
+
+export function recognizeMedicineImage(filePath) {
+  return upload({
+    url: '/api/v1/medicines/recognize',
+    filePath,
+    auth: true,
+  })
+}
+
 export function fetchMedicineDetail(id) {
   return request({
     url: `/api/v1/medicines/${id}`,
@@ -132,5 +191,6 @@ export const authStore = {
   getBaseUrl,
   getToken,
   getStoredUser,
+  isMockSms: () => SMS_MODE === 'mock',
   clearAuth,
 }

@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     sms_send_cooldown_seconds: int = 60
     sms_max_daily_send: int = 10
     sms_max_verify_attempts: int = 5
+    aliyun_sms_access_key_id: str = ""
+    aliyun_sms_access_key_secret: str = ""
+    aliyun_sms_sign_name: str = ""
+    aliyun_sms_template_code: str = ""
+
+    ai_recognition_mode: str = "bailian"
+    bailian_api_key: str = ""
+    bailian_model: str = "qwen-vl-plus"
+    upload_dir: str = "uploads"
+    max_upload_size_mb: int = 10
 
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 

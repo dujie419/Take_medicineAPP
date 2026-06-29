@@ -6,7 +6,10 @@
 				<text class="eyebrow">药品管理</text>
 				<text class="title">我的药品</text>
 			</view>
-			<button class="add-button" @click="goCreate">新增</button>
+			<view class="actions">
+				<button class="scan-button" @click="goRecognize">识药</button>
+				<button class="add-button" @click="goCreate">新增</button>
+			</view>
 		</view>
 
 		<view v-if="loading" class="state-panel">
@@ -16,6 +19,7 @@
 		<view v-else-if="medicines.length === 0" class="state-panel">
 			<text class="empty-title">暂无药品</text>
 			<text class="empty-text">先添加常用药品，B 同学的用药计划模块就可以选择它们。</text>
+			<button class="primary-button" @click="goRecognize">拍照识药</button>
 			<button class="primary-button" @click="goCreate">添加药品</button>
 		</view>
 
@@ -75,6 +79,9 @@
 			goCreate() {
 				uni.navigateTo({ url: '/pages/medicines/create' })
 			},
+			goRecognize() {
+				uni.navigateTo({ url: '/pages/medicines/recognize' })
+			},
 			goDetail(id) {
 				uni.navigateTo({ url: `/pages/medicines/detail?id=${id}` })
 			},
@@ -111,15 +118,29 @@
 		line-height: 1.25;
 	}
 
-	.add-button {
+	.actions {
+		display: flex;
+		gap: 12rpx;
+		align-items: center;
+	}
+
+	.add-button,
+	.scan-button {
 		width: 132rpx;
 		height: 72rpx;
 		line-height: 72rpx;
 		margin: 0;
 		border-radius: 8rpx;
-		background: #2563eb;
 		color: #ffffff;
 		font-size: 28rpx;
+	}
+
+	.add-button {
+		background: #2563eb;
+	}
+
+	.scan-button {
+		background: #0f766e;
 	}
 
 	.state-panel,
@@ -155,6 +176,7 @@
 	.primary-button {
 		height: 88rpx;
 		line-height: 88rpx;
+		margin-bottom: 16rpx;
 		border-radius: 8rpx;
 		background: #2563eb;
 		color: #ffffff;
