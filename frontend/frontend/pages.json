@@ -29,6 +29,19 @@
 			"style": {
 				"navigationBarTitleText": "药品详情"
 			}
+		},
+		{
+			"path": "pages/plans/index",
+			"style": {
+				"navigationBarTitleText": "用药计划",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/plans/form",
+			"style": {
+				"navigationBarTitleText": "新增用药计划"
+			}
 		}
 	],
 	"globalStyle": {
