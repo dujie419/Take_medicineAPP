@@ -1,0 +1,106 @@
+import { UTSAndroid } from "io.dcloud.uts"
+import Build from "android.os.Build"
+import { MedicineReminderNative } from "com.takemedicine.reminder"
+import {
+  CancelReminderGroup,
+  CancelUserReminders,
+  DeleteRecording,
+  GetLaunchRoute,
+  GetPermissionState,
+  PermissionState,
+  PlayRecording,
+  ReminderItem,
+  RequestExactAlarmPermission,
+  RequestPermissions,
+  ScheduleReminders,
+  StartRecording,
+  StopRecording
+} from "../interface.uts"
+
+function permissionState(): PermissionState {
+  const value = JSON.parse(MedicineReminderNative.permissionStateJson()) as UTSJSONObject
+  return {
+    notificationGranted: value["notificationGranted"] as boolean,
+    microphoneGranted: value["microphoneGranted"] as boolean,
+    exactAlarmGranted: value["exactAlarmGranted"] as boolean
+  }
+}
+
+export const scheduleReminders: ScheduleReminders = function(
+  userId: string,
+  items: ReminderItem[]
+): number {
+  return MedicineReminderNative.scheduleReminders(userId, JSON.stringify(items))
+}
+
+export const cancelReminderGroup: CancelReminderGroup = function(
+  userId: string,
+  groupId: string
+) {
+  MedicineReminderNative.cancelReminderGroup(userId, groupId)
+}
+
+export const cancelUserReminders: CancelUserReminders = function(userId: string) {
+  MedicineReminderNative.cancelUserReminders(userId)
+}
+
+export const startRecording: StartRecording = function(userId: string, groupId: string): string {
+  return MedicineReminderNative.startRecording(userId, groupId)
+}
+
+export const stopRecording: StopRecording = function(): number {
+  return MedicineReminderNative.stopRecording()
+}
+
+export const playRecording: PlayRecording = function(userId: string, groupId: string): boolean {
+  return MedicineReminderNative.playRecording(userId, groupId)
+}
+
+export const deleteRecording: DeleteRecording = function(userId: string, groupId: string): boolean {
+  return MedicineReminderNative.deleteRecording(userId, groupId)
+}
+
+export const getPermissionState: GetPermissionState = function(): PermissionState {
+  return permissionState()
+}
+
+export const requestPermissions: RequestPermissions = function(
+  includeMicrophone: boolean,
+  success: (state: PermissionState) => void,
+  fail: (message: string) => void
+) {
+  const permissions: string[] = []
+  if (Build.VERSION.SDK_INT >= 33) {
+    permissions.push("android.permission.POST_NOTIFICATIONS")
+  }
+  if (includeMicrophone) {
+    permissions.push("android.permission.RECORD_AUDIO")
+  }
+  if (permissions.length == 0) {
+    success(permissionState())
+    return
+  }
+  const activity = UTSAndroid.getUniActivity()
+  if (activity == null) {
+    fail("当前页面无法申请系统权限")
+    return
+  }
+  UTSAndroid.requestSystemPermission(
+    activity,
+    permissions,
+    function(_allRight: boolean, _granted: string[]) {
+      success(permissionState())
+    },
+    function(doNotAskAgain: boolean, _granted: string[]) {
+      fail(doNotAskAgain ? "权限已被永久拒绝，请前往系统设置开启" : "未获得所需权限")
+    }
+  )
+}
+
+export const requestExactAlarmPermission: RequestExactAlarmPermission = function(): boolean {
+  return MedicineReminderNative.requestExactAlarmPermission()
+}
+
+export const getLaunchRoute: GetLaunchRoute = function(): string {
+  return MedicineReminderNative.getLaunchRoute()
+}

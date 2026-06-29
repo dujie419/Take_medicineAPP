@@ -114,6 +114,7 @@
 import AppNav from '@/components/AppNav.vue'
 import { getMedicines } from '@/api/medicines.js'
 import { createPlan, getPlan, updatePlan } from '@/api/plans.js'
+import { refreshTodayReminders } from '@/services/reminderManager.js'
 
 function todayText() {
   const now = new Date()
@@ -283,6 +284,9 @@ export default {
         } else {
           await createPlan(payload)
         }
+        await refreshTodayReminders().catch((error) => {
+          console.warn('刷新本地提醒失败', error)
+        })
         uni.showToast({ title: this.isEditing ? '修改成功' : '创建成功', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 500)
       } catch (error) {

@@ -10,4 +10,5 @@ def test_today_routes_are_registered_under_api_v1():
     }
 
     assert ("GET", "/api/v1/today") in routes
+    assert ("GET", "/api/v1/medication-logs") in routes
     assert ("POST", "/api/v1/medication-logs") in routes

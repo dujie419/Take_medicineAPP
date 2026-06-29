@@ -2,7 +2,7 @@ const TOKEN_KEY = 'take_medicine_token'
 const USER_KEY = 'take_medicine_user'
 const BASE_URL_KEY = 'take_medicine_base_url'
 
-const DEFAULT_BASE_URL = 'http://127.0.0.1:8000'
+const DEFAULT_BASE_URL = 'http://192.168.150.218:8000'
 const SMS_MODE = typeof process !== 'undefined' && process.env && process.env.VUE_APP_SMS_MODE
   ? process.env.VUE_APP_SMS_MODE
   : 'mock'

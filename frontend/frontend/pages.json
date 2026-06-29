@@ -49,6 +49,13 @@
 				"navigationBarTitleText": "今日提醒",
 				"enablePullDownRefresh": true
 			}
+		},
+		{
+			"path": "pages/medication-logs/index",
+			"style": {
+				"navigationBarTitleText": "服药记录",
+				"enablePullDownRefresh": true
+			}
 		}
 	],
 	"globalStyle": {

@@ -6,8 +6,9 @@
       <text class="date">{{ dateText }}</text>
       <view class="voice-state">
         <text>语音提醒</text>
-        <text class="voice-note">本地通知与 TTS 待接入</text>
+        <text class="voice-note" @click="openExactAlarmSettings">{{ voiceNote }}</text>
       </view>
+      <button class="history-button" size="mini" @click="openHistory">查看服药记录</button>
     </view>
 
     <view v-if="loading" class="state-card">
@@ -69,6 +70,27 @@
             <text class="speech-text">{{ item.speech_text }}</text>
           </view>
 
+          <view class="record-actions">
+            <button
+              v-if="recordingGroupId !== item.reminder_group_id"
+              class="record-button"
+              size="mini"
+              @click="startRecording(item)"
+            >
+              录制提醒音
+            </button>
+            <button
+              v-else
+              class="record-button recording"
+              size="mini"
+              @click="stopRecording(item)"
+            >
+              停止录音
+            </button>
+            <button class="record-button" size="mini" @click="playRecording(item)">试听</button>
+            <button class="record-button danger" size="mini" @click="removeRecording(item)">删除录音</button>
+          </view>
+
           <view v-if="item.status !== 'done'" class="actions">
             <button
               class="action-button taken-button"
@@ -105,6 +127,17 @@
 <script>
 import AppNav from '@/components/AppNav.vue'
 import { getToday, updateReminderStatus } from '@/api/today.js'
+import {
+  deleteCustomRecording,
+  getReminderPermissionState,
+  isNativeReminderAvailable,
+  playCustomRecording,
+  reconcileMedicationAction,
+  requestExactAlarmPermission,
+  startCustomRecording,
+  stopCustomRecording,
+  syncTodayReminders
+} from '@/services/reminderManager.js'
 
 export default {
   components: { AppNav },
@@ -113,7 +146,9 @@ export default {
       today: null,
       loading: false,
       errorMessage: '',
-      busyGroupId: ''
+      busyGroupId: '',
+      recordingGroupId: '',
+      permissionState: null
     }
   },
   computed: {
@@ -134,6 +169,12 @@ export default {
       if (!this.today?.date) return ''
       const parts = this.today.date.split('-')
       return `${parts[0]}年${Number(parts[1])}月${Number(parts[2])}日`
+    },
+    voiceNote() {
+      if (!isNativeReminderAvailable()) return '请使用 Android App'
+      if (!this.permissionState?.notificationGranted) return '通知权限未开启'
+      if (!this.permissionState?.exactAlarmGranted) return '提醒可能延迟，点此设置'
+      return '通知、震动和语音已开启'
     }
   },
   onShow() {
@@ -147,7 +188,16 @@ export default {
       this.loading = true
       this.errorMessage = ''
       try {
-        this.today = await getToday()
+        const data = await getToday()
+        this.today = data
+        try {
+          const result = await syncTodayReminders(data, { requestPermission: true })
+          this.permissionState = result.permission || getReminderPermissionState()
+        } catch (reminderError) {
+          this.permissionState = getReminderPermissionState()
+          console.warn('同步本地提醒失败', reminderError)
+          uni.showToast({ title: '今日计划已加载，本地提醒同步失败', icon: 'none' })
+        }
       } catch (error) {
         this.errorMessage = error.message || '加载失败'
       } finally {
@@ -179,6 +229,7 @@ export default {
       this.busyGroupId = item.reminder_group_id
       try {
         await updateReminderStatus(item.reminder_group_id, status)
+        await reconcileMedicationAction(item.reminder_group_id, status)
         const messages = {
           taken: '已记录服用',
           skipped: '已跳过本次',
@@ -208,6 +259,55 @@ export default {
     },
     goPlans() {
       uni.navigateBack()
+    },
+    openHistory() {
+      uni.navigateTo({ url: '/pages/medication-logs/index' })
+    },
+    openExactAlarmSettings() {
+      if (!isNativeReminderAvailable()) {
+        uni.showToast({ title: '请在 Android App 中使用提醒功能', icon: 'none' })
+        return
+      }
+      if (!this.permissionState?.exactAlarmGranted) {
+        requestExactAlarmPermission()
+      }
+    },
+    async startRecording(item) {
+      if (this.recordingGroupId) return
+      try {
+        await startCustomRecording(item.reminder_group_id)
+        this.recordingGroupId = item.reminder_group_id
+        this.permissionState = getReminderPermissionState()
+        uni.showToast({ title: '开始录音', icon: 'none' })
+      } catch (error) {
+        uni.showToast({ title: error.message || '无法开始录音', icon: 'none' })
+      }
+    },
+    stopRecording(item) {
+      if (this.recordingGroupId !== item.reminder_group_id) return
+      try {
+        const duration = stopCustomRecording()
+        uni.showToast({
+          title: duration < 1000 ? '录音过短，请重新录制' : '录音已保存',
+          icon: 'none'
+        })
+      } catch (error) {
+        uni.showToast({ title: error.message || '录音保存失败', icon: 'none' })
+      } finally {
+        this.recordingGroupId = ''
+      }
+    },
+    playRecording(item) {
+      if (!playCustomRecording(item.reminder_group_id)) {
+        uni.showToast({ title: '还没有可试听的自定义录音', icon: 'none' })
+      }
+    },
+    removeRecording(item) {
+      if (deleteCustomRecording(item.reminder_group_id)) {
+        uni.showToast({ title: '已恢复系统语音', icon: 'none' })
+      } else {
+        uni.showToast({ title: '删除录音失败', icon: 'none' })
+      }
     }
   }
 }
@@ -268,6 +368,13 @@ export default {
   opacity: 0.84;
 }
 
+.history-button {
+  margin: 24rpx 0 0;
+  color: #fff;
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .state-card,
 .summary-card,
 .reminder-card {
@@ -310,6 +417,32 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.record-button {
+  margin: 0;
+  color: #4969a8;
+  border: 1rpx solid #c8d5f0;
+  background: #f5f8ff;
+  font-size: 22rpx;
+}
+
+.record-button.recording {
+  color: #fff;
+  background: #d64545;
+}
+
+.record-button.danger {
+  color: #b83b3b;
+  border-color: #efc4c4;
+  background: #fff5f5;
 }
 
 .summary-number {

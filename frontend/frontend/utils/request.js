@@ -7,6 +7,7 @@ function errorMessage(data, fallback) {
 }
 
 function returnToLogin(message = '登录已失效，请重新登录') {
+  uni.$emit('take-medicine:auth-clearing')
   authStore.clearAuth()
   uni.showToast({ title: message, icon: 'none' })
   setTimeout(() => {

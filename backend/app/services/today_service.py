@@ -6,6 +6,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.medication_log import MedicationLog
@@ -281,11 +282,7 @@ def record_group_action(
         ).all()
     }
     db_now = now_utc.astimezone(timezone.utc).replace(tzinfo=None)
-    for plan in plans:
-        log = existing_logs.get(plan.id)
-        if log is None:
-            log = MedicationLog(plan_id=plan.id, planned_at=planned_at, status=payload.status)
-            db.add(log)
+    def apply_action(log: MedicationLog) -> None:
         log.status = payload.status
         if payload.status == "taken":
             log.actual_at = db_now
@@ -297,11 +294,31 @@ def record_group_action(
             log.actual_at = None
             log.snooze_until = db_now + timedelta(minutes=5)
 
+    for plan in plans:
+        log = existing_logs.get(plan.id)
+        if log is None:
+            log = MedicationLog(plan_id=plan.id, planned_at=planned_at, status=payload.status)
+            db.add(log)
+        apply_action(log)
+
     try:
         db.commit()
-    except Exception:
+    except IntegrityError:
         db.rollback()
-        raise
+        concurrent_logs = {
+            log.plan_id: log
+            for log in db.scalars(
+                select(MedicationLog).where(
+                    MedicationLog.plan_id.in_(plan_ids),
+                    MedicationLog.planned_at == planned_at,
+                )
+            ).all()
+        }
+        if any(plan_id not in concurrent_logs for plan_id in plan_ids):
+            raise
+        for log in concurrent_logs.values():
+            apply_action(log)
+        db.commit()
 
     today = get_today(db, user, now=now_utc)
     for item in today.items:

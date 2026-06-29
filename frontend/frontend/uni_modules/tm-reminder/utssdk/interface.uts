@@ -1,0 +1,30 @@
+export type ReminderItem = {
+  groupId: string
+  plannedAtEpochMs: number
+  snoozeUntilEpochMs: number | null
+  status: string
+  speechText: string
+  medicineNames: string
+}
+
+export type PermissionState = {
+  notificationGranted: boolean
+  microphoneGranted: boolean
+  exactAlarmGranted: boolean
+}
+
+export type ScheduleReminders = (userId: string, items: ReminderItem[]) => number
+export type CancelReminderGroup = (userId: string, groupId: string) => void
+export type CancelUserReminders = (userId: string) => void
+export type StartRecording = (userId: string, groupId: string) => string
+export type StopRecording = () => number
+export type PlayRecording = (userId: string, groupId: string) => boolean
+export type DeleteRecording = (userId: string, groupId: string) => boolean
+export type GetPermissionState = () => PermissionState
+export type RequestPermissions = (
+  includeMicrophone: boolean,
+  success: (state: PermissionState) => void,
+  fail: (message: string) => void
+) => void
+export type RequestExactAlarmPermission = () => boolean
+export type GetLaunchRoute = () => string

@@ -1,0 +1,7 @@
+{
+  "id": "tm-reminder",
+  "displayName": "按时吃药 Android 提醒",
+  "version": "1.0.0",
+  "description": "用药本地通知、震动、TTS 与自定义录音",
+  "uni_modules": {}
+}

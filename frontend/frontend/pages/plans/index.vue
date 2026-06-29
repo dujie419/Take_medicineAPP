@@ -89,6 +89,7 @@
 <script>
 import AppNav from '@/components/AppNav.vue'
 import { deletePlan, getPlans, updatePlan } from '@/api/plans.js'
+import { refreshTodayReminders } from '@/services/reminderManager.js'
 
 export default {
   components: { AppNav },
@@ -143,6 +144,9 @@ export default {
       this.updatingPlanIds.push(plan.id)
       try {
         await updatePlan(plan.id, { is_enabled: nextValue })
+        await refreshTodayReminders().catch((error) => {
+          console.warn('刷新本地提醒失败', error)
+        })
         uni.showToast({ title: nextValue ? '计划已启用' : '计划已暂停', icon: 'none' })
       } catch (error) {
         plan.is_enabled = previousValue
@@ -162,6 +166,9 @@ export default {
           this.deletingPlanIds.push(plan.id)
           try {
             await deletePlan(plan.id)
+            await refreshTodayReminders().catch((error) => {
+              console.warn('刷新本地提醒失败', error)
+            })
             uni.showToast({ title: '已删除', icon: 'success' })
             await this.loadPlans()
           } catch (error) {
