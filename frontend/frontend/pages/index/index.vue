@@ -1,5 +1,6 @@
 <template>
 	<view class="page">
+		<app-nav v-if="isLoggedIn" active="profile" />
 		<view class="profile-header">
 			<view>
 				<text class="eyebrow">个人资料</text>
@@ -78,6 +79,7 @@
 </template>
 
 <script>
+	import AppNav from '../../components/AppNav.vue'
 	import {
 		authStore,
 		fetchCurrentUser,
@@ -87,6 +89,7 @@
 	} from '../../common/api'
 
 	export default {
+		components: { AppNav },
 		data() {
 			return {
 				baseUrl: authStore.getBaseUrl(),

@@ -1,11 +1,15 @@
 <template>
   <view class="page">
+    <app-nav active="plans" />
     <view class="header">
       <view>
         <text class="title">用药计划</text>
         <text class="subtitle">安排每天的服药时间</text>
       </view>
-      <button class="add-button" size="mini" @click="openCreate">新增计划</button>
+      <view class="header-actions">
+        <button class="today-button" size="mini" @click="openToday">今日提醒</button>
+        <button class="add-button" size="mini" @click="openCreate">新增计划</button>
+      </view>
     </view>
 
     <view v-if="loading" class="state-card">
@@ -83,9 +87,11 @@
 </template>
 
 <script>
+import AppNav from '@/components/AppNav.vue'
 import { deletePlan, getPlans, updatePlan } from '@/api/plans.js'
 
 export default {
+  components: { AppNav },
   data() {
     return {
       plans: [],
@@ -116,6 +122,9 @@ export default {
     },
     openCreate() {
       uni.navigateTo({ url: '/pages/plans/form' })
+    },
+    openToday() {
+      uni.navigateTo({ url: '/pages/today/index' })
     },
     openMedicineCreate() {
       uni.navigateTo({ url: '/pages/medicines/create' })
@@ -217,6 +226,22 @@ export default {
   color: #fff;
   border: 0;
   background: #2f80ed;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+}
+
+.header-actions button {
+  margin: 0;
+}
+
+.today-button {
+  color: #2f80ed;
+  border: 1rpx solid #b9d6fa;
+  background: #fff;
 }
 
 .medicine-button {

@@ -1,11 +1,347 @@
-# Test your FastAPI endpoints
+@baseUrl = http://127.0.0.1:8000
+@phone = 13800138000
+@code = 123456
+@reminderTime = 08:00
 
-GET http://127.0.0.1:8000/
+# 运行前准备：
+# 1. 从 backend 目录启动 FastAPI：
+#    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 2. 启动 MySQL 和 Redis。
+# 3. 今日提醒和服药操作测试需要先执行已批准的 0004 数据库迁移。
+# 4. 建议从上到下顺序执行，Token、药品 ID、计划 ID 会自动保存。
+
+### 初始化动态日期变量
+< {%
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const today = `${year}-${month}-${day}`;
+    const reminderTime = request.variables.get("reminderTime");
+    client.global.set("today", today);
+    client.global.set("reminder_group_id", `${today}_${reminderTime}`);
+%}
+GET {{baseUrl}}/health
 Accept: application/json
 
-###
+> {%
+    client.test("健康检查返回成功", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.code === 0, "业务状态码应为 0");
+        client.assert(response.body.data.status === "ok", "服务状态应为 ok");
+    });
+%}
 
-GET http://127.0.0.1:8000/hello/User
+### 项目根路径跳转到接口文档
+GET {{baseUrl}}/
+Accept: text/html
+
+> {%
+    client.test("根路径可以访问", function () {
+        client.assert(response.status === 200, "根路径跳转后应返回 200");
+    });
+%}
+
+### 获取测试验证码
+POST {{baseUrl}}/api/v1/auth/sms-codes
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}"
+}
+
+> {%
+    client.test("验证码发送成功", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.code === 0, "业务状态码应为 0");
+    });
+%}
+
+### 登录并保存 JWT
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}",
+  "code": "{{code}}"
+}
+
+> {%
+    client.test("登录成功并返回 JWT", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.code === 0, "业务状态码应为 0");
+        client.assert(Boolean(response.body.data.access_token), "应返回 access_token");
+    });
+    client.global.set("access_token", response.body.data.access_token);
+%}
+
+### 获取当前用户
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{access_token}}
 Accept: application/json
 
-###
+> {%
+    client.test("可以获取当前用户", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.phone === "{{phone}}", "手机号应与登录账号一致");
+    });
+%}
+
+### 修改当前用户称呼
+PATCH {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "nickname": "测试用户"
+}
+
+> {%
+    client.test("可以修改用户称呼", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.nickname === "测试用户", "称呼应修改成功");
+    });
+%}
+
+### 新增药品并保存 medicine_id
+POST {{baseUrl}}/api/v1/medicines
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "阿司匹林",
+  "specification": "100mg",
+  "dosage": "1片",
+  "usage_note": "饭后服用",
+  "ai_confidence": 0.95
+}
+
+> {%
+    client.test("可以新增当前用户药品", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.name === "阿司匹林", "药品名称应正确");
+    });
+    client.global.set("medicine_id", response.body.data.id);
+%}
+
+### 查询药品列表
+GET {{baseUrl}}/api/v1/medicines
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("可以查询药品列表", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(Array.isArray(response.body.data), "data 应为数组");
+    });
+%}
+
+### 查询药品详情
+GET {{baseUrl}}/api/v1/medicines/{{medicine_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("可以查询刚创建的药品", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.id == client.global.get("medicine_id"), "药品 ID 应一致");
+    });
+%}
+
+### 新增用药计划并保存 plan_id
+POST {{baseUrl}}/api/v1/plans
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "medicine_id": {{medicine_id}},
+  "dose": "1片",
+  "daily_times": 1,
+  "start_date": "{{today}}",
+  "end_date": null,
+  "remark": "HTTP Client 自动化测试",
+  "is_enabled": true,
+  "reminder_times": [
+    "{{reminderTime}}"
+  ]
+}
+
+> {%
+    client.test("可以新增用药计划", function () {
+        client.assert(response.status === 201, "状态码应为 201");
+        client.assert(response.body.data.medicine_id == client.global.get("medicine_id"), "计划应关联测试药品");
+    });
+    client.global.set("plan_id", response.body.data.id);
+%}
+
+### 查询计划列表
+GET {{baseUrl}}/api/v1/plans
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("可以查询计划列表", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(Array.isArray(response.body.data.items), "items 应为数组");
+    });
+%}
+
+### 查询计划详情
+GET {{baseUrl}}/api/v1/plans/{{plan_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("可以查询刚创建的计划", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.id == client.global.get("plan_id"), "计划 ID 应一致");
+    });
+%}
+
+### PUT 完整更新计划
+PUT {{baseUrl}}/api/v1/plans/{{plan_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "dose": "1片",
+  "daily_times": 1,
+  "start_date": "{{today}}",
+  "end_date": null,
+  "remark": "已通过 PUT 更新",
+  "is_enabled": true,
+  "reminder_times": [
+    "{{reminderTime}}"
+  ]
+}
+
+> {%
+    client.test("PUT 可以更新计划", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.remark === "已通过 PUT 更新", "备注应更新成功");
+    });
+%}
+
+### PATCH 暂停计划
+PATCH {{baseUrl}}/api/v1/plans/{{plan_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "is_enabled": false
+}
+
+> {%
+    client.test("PATCH 可以暂停计划", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.is_enabled === false, "计划应已暂停");
+    });
+%}
+
+### PATCH 重新启用计划
+PATCH {{baseUrl}}/api/v1/plans/{{plan_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "is_enabled": true
+}
+
+> {%
+    client.test("PATCH 可以启用计划", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.is_enabled === true, "计划应已启用");
+    });
+%}
+
+### 查询今日提醒
+GET {{baseUrl}}/api/v1/today
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("今日提醒包含测试计划", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.date === client.global.get("today"), "应返回用户时区的今天");
+        const item = response.body.data.items.find(
+            value => value.reminder_group_id === client.global.get("reminder_group_id")
+        );
+        client.assert(Boolean(item), "应找到测试提醒组");
+    });
+%}
+
+### 标记提醒组已服用
+POST {{baseUrl}}/api/v1/medication-logs
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "reminder_group_id": "{{reminder_group_id}}",
+  "status": "taken"
+}
+
+> {%
+    client.test("可以标记整组已服用", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.status === "done", "提醒组应已处理");
+    });
+%}
+
+### 将同一记录更新为已跳过，验证幂等更新
+POST {{baseUrl}}/api/v1/medication-logs
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "reminder_group_id": "{{reminder_group_id}}",
+  "status": "skipped"
+}
+
+> {%
+    client.test("可以把同一提醒记录更新为已跳过", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.medicines.every(value => value.status === "skipped"), "药品状态应为 skipped");
+    });
+%}
+
+### 将同一记录更新为 5 分钟后提醒
+POST {{baseUrl}}/api/v1/medication-logs
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "reminder_group_id": "{{reminder_group_id}}",
+  "status": "snoozed"
+}
+
+> {%
+    client.test("可以设置稍后提醒", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.data.status === "snoozed", "提醒组状态应为 snoozed");
+        client.assert(Boolean(response.body.data.medicines[0].snooze_until), "应返回稍后提醒时间");
+    });
+%}
+
+### 删除计划
+DELETE {{baseUrl}}/api/v1/plans/{{plan_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("可以软删除计划", function () {
+        client.assert(response.status === 200, "状态码应为 200");
+        client.assert(response.body.code === 0, "业务状态码应为 0");
+    });
+%}
+
+### 验证已删除计划不可再查询
+GET {{baseUrl}}/api/v1/plans/{{plan_id}}
+Authorization: Bearer {{access_token}}
+Accept: application/json
+
+> {%
+    client.test("已删除计划返回 404", function () {
+        client.assert(response.status === 404, "状态码应为 404");
+        client.assert(response.body.code === 40402, "业务错误码应为 40402");
+    });
+%}

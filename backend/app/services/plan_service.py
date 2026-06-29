@@ -159,10 +159,21 @@ def update_plan(
     if "is_enabled" in fields:
         plan.is_enabled = payload.is_enabled
     if "reminder_times" in fields:
-        plan.reminder_times = [
-            ReminderTime(reminder_time=reminder_time)
-            for reminder_time in payload.reminder_times
-        ]
+        requested_times = set(payload.reminder_times)
+        existing_by_time = {
+            item.reminder_time: item
+            for item in plan.reminder_times
+        }
+
+        for reminder_time, item in existing_by_time.items():
+            if reminder_time not in requested_times:
+                plan.reminder_times.remove(item)
+
+        for reminder_time in payload.reminder_times:
+            if reminder_time not in existing_by_time:
+                plan.reminder_times.append(
+                    ReminderTime(reminder_time=reminder_time)
+                )
 
     try:
         db.commit()

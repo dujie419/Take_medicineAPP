@@ -1,5 +1,6 @@
 <template>
 	<view class="page">
+		<app-nav active="medicines" />
 		<view class="header">
 			<text class="eyebrow">药品详情</text>
 			<text class="title">{{ medicine ? medicine.name : '加载中' }}</text>
@@ -39,9 +40,11 @@
 </template>
 
 <script>
+	import AppNav from '../../components/AppNav.vue'
 	import { authStore, fetchMedicineDetail } from '../../common/api'
 
 	export default {
+		components: { AppNav },
 		data() {
 			return {
 				medicineId: null,

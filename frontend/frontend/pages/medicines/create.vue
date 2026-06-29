@@ -1,5 +1,6 @@
 <template>
 	<view class="page">
+		<app-nav active="medicines" />
 		<view class="header">
 			<text class="eyebrow">药品管理</text>
 			<text class="title">新增药品</text>
@@ -26,9 +27,11 @@
 </template>
 
 <script>
+	import AppNav from '../../components/AppNav.vue'
 	import { authStore, createMedicine } from '../../common/api'
 
 	export default {
+		components: { AppNav },
 		data() {
 			return {
 				saving: false,

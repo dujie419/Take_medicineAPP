@@ -1,5 +1,6 @@
 <template>
   <view class="page">
+    <app-nav active="plans" />
     <view v-if="loading" class="state-card">正在加载...</view>
 
     <view v-else>
@@ -110,6 +111,7 @@
 </template>
 
 <script>
+import AppNav from '@/components/AppNav.vue'
 import { getMedicines } from '@/api/medicines.js'
 import { createPlan, getPlan, updatePlan } from '@/api/plans.js'
 
@@ -122,6 +124,7 @@ function todayText() {
 }
 
 export default {
+  components: { AppNav },
   data() {
     return {
       planId: null,

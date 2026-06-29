@@ -36,6 +36,13 @@
 			"style": {
 				"navigationBarTitleText": "新增用药计划"
 			}
+		},
+		{
+			"path": "pages/today/index",
+			"style": {
+				"navigationBarTitleText": "今日提醒",
+				"enablePullDownRefresh": true
+			}
 		}
 	],
 	"globalStyle": {
