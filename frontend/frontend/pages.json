@@ -19,6 +19,12 @@
 			}
 		},
 		{
+			"path": "pages/medicines/recognize",
+			"style": {
+				"navigationBarTitleText": "拍照识药"
+			}
+		},
+		{
 			"path": "pages/medicines/detail",
 			"style": {
 				"navigationBarTitleText": "药品详情"

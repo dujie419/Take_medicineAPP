@@ -62,7 +62,7 @@
 			<button class="primary-button" :loading="loggingIn" :disabled="loggingIn" @click="submitLogin">
 				登录
 			</button>
-			<text class="hint">开发环境验证码固定为 123456</text>
+			<text v-if="showMockSmsHint" class="hint">开发环境验证码固定为 123456</text>
 		</view>
 
 		<view class="panel compact">
@@ -106,6 +106,9 @@
 			},
 			displayName() {
 				return this.user?.nickname || '我的'
+			},
+			showMockSmsHint() {
+				return authStore.isMockSms()
 			},
 		},
 		onLoad() {

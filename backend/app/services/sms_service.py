@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-import random
+import json
+import secrets
 
 from fastapi import HTTPException, status
 from redis import Redis
@@ -15,15 +16,22 @@ class SmsService:
         self.settings = get_settings()
 
     def send_code(self, phone: str) -> None:
+        mode = self.settings.sms_mode.lower()
+        if mode not in {"mock", "aliyun"}:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="短信服务模式配置错误，请联系管理员",
+            )
+
+        daily_key = self._daily_key(phone)
+        cooldown_key = self._cooldown_key(phone)
         try:
-            cooldown_key = self._cooldown_key(phone)
             if self.redis.exists(cooldown_key):
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail="验证码发送过于频繁，请稍后再试",
                 )
 
-            daily_key = self._daily_key(phone)
             daily_count = int(self.redis.get(daily_key) or 0)
             if daily_count >= self.settings.sms_max_daily_send:
                 raise HTTPException(
@@ -46,8 +54,18 @@ class SmsService:
                 detail="Redis 服务不可用，请确认验证码缓存服务已启动",
             ) from exc
 
-        if self.settings.sms_mode != "mock":
-            self._send_by_provider(phone, code)
+        if mode == "aliyun":
+            try:
+                self._send_by_provider(phone, code)
+            except HTTPException:
+                self._cleanup_failed_send(phone, daily_key)
+                raise
+            except Exception as exc:
+                self._cleanup_failed_send(phone, daily_key)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="短信发送失败，请稍后重试",
+                ) from exc
 
     def verify_code(self, phone: str, code: str) -> None:
         try:
@@ -75,15 +93,103 @@ class SmsService:
             ) from exc
 
     def _generate_code(self) -> str:
-        if self.settings.sms_mode == "mock":
+        if self.settings.sms_mode.lower() == "mock":
             return self.settings.sms_test_code
-        return f"{random.randint(0, 999999):06d}"
+        return f"{secrets.randbelow(1000000):06d}"
 
     def _send_by_provider(self, phone: str, code: str) -> None:
+        if self.settings.sms_mode.lower() == "aliyun":
+            self._send_by_aliyun(phone, code)
+            return
+
         raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="生产短信服务尚未接入，请先使用 SMS_MODE=mock",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="短信服务模式配置错误，请联系管理员",
         )
+
+    def _send_by_aliyun(self, phone: str, code: str) -> None:
+        missing_config = [
+            value
+            for value in (
+                self.settings.aliyun_sms_access_key_id,
+                self.settings.aliyun_sms_access_key_secret,
+                self.settings.aliyun_sms_sign_name,
+                self.settings.aliyun_sms_template_code,
+            )
+            if not value
+        ]
+        if missing_config:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="短信服务配置不完整，请联系管理员",
+            )
+
+        try:
+            client = self._create_aliyun_client()
+            request = self._create_aliyun_request(phone, code)
+            response = client.send_sms_with_options(request, self._create_aliyun_runtime_options())
+            response_code = getattr(getattr(response, "body", None), "code", None)
+            if response_code != "OK":
+                raise RuntimeError(response_code or "UNKNOWN")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="短信发送失败，请稍后重试",
+            ) from exc
+
+    def _create_aliyun_client(self):
+        try:
+            from alibabacloud_dysmsapi20170525.client import Client as DysmsapiClient
+            from alibabacloud_tea_openapi import models as open_api_models
+        except ImportError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="短信服务依赖未安装，请联系管理员",
+            ) from exc
+
+        config = open_api_models.Config(
+            access_key_id=self.settings.aliyun_sms_access_key_id,
+            access_key_secret=self.settings.aliyun_sms_access_key_secret,
+        )
+        config.endpoint = "dysmsapi.aliyuncs.com"
+        return DysmsapiClient(config)
+
+    def _create_aliyun_request(self, phone: str, code: str):
+        try:
+            from alibabacloud_dysmsapi20170525 import models as dysmsapi_models
+        except ImportError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="短信服务依赖未安装，请联系管理员",
+            ) from exc
+
+        return dysmsapi_models.SendSmsRequest(
+            phone_numbers=phone,
+            sign_name=self.settings.aliyun_sms_sign_name,
+            template_code=self.settings.aliyun_sms_template_code,
+            template_param=json.dumps({"code": code}, ensure_ascii=False),
+        )
+
+    def _create_aliyun_runtime_options(self):
+        try:
+            from alibabacloud_tea_util import models as util_models
+        except ImportError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="短信服务依赖未安装，请联系管理员",
+            ) from exc
+
+        return util_models.RuntimeOptions()
+
+    def _cleanup_failed_send(self, phone: str, daily_key: str) -> None:
+        try:
+            self.redis.delete(self._code_key(phone), self._attempts_key(phone), self._cooldown_key(phone))
+            if int(self.redis.get(daily_key) or 0) > 0:
+                self.redis.decr(daily_key)
+        except RedisError:
+            pass
 
     @staticmethod
     def _code_key(phone: str) -> str:

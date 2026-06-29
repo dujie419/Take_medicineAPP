@@ -21,6 +21,14 @@ class MedicineService:
         self.db.refresh(medicine)
         return medicine
 
+    def create_many_for_user(self, user_id: int, payloads: list[MedicineCreate]) -> list[Medicine]:
+        medicines = [Medicine(user_id=user_id, **payload.model_dump()) for payload in payloads]
+        self.db.add_all(medicines)
+        self.db.commit()
+        for medicine in medicines:
+            self.db.refresh(medicine)
+        return medicines
+
     def get_for_user(self, medicine_id: int, user_id: int) -> Medicine:
         statement = select(Medicine).where(Medicine.id == medicine_id, Medicine.user_id == user_id)
         medicine = self.db.scalar(statement)
